@@ -543,7 +543,9 @@ stm32_dma_class_init(ObjectClass *klass, void *data)
 	DeviceClass *dc = DEVICE_CLASS(klass);
 	//SysBusDeviceClass *sc = SYS_BUS_DEVICE_CLASS(klass);
 	//sc->init = stm32_dma_init;
-	dc->reset = stm32_dma_reset;
+	//来自qemu_stm32的过时代码
+	//dc->reset = stm32_dma_reset;
+	device_class_set_legacy_reset( dc,stm32_dma_reset);
 	//TODO: fix this: dc->no_user = 1;
 	//dc->props = stm32_dma_properties;
 }

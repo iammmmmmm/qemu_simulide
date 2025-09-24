@@ -790,7 +790,9 @@ static void stm32_uart_class_init(ObjectClass *klass, void *data) {
 
   // k->init = stm32_uart_init;
   dc->realize = stm32_uart_realize;
-  dc->reset = stm32_uart_reset;
+  //来自qemu_stm32的过时代码
+  //dc->reset = stm32_uart_reset;
+  device_class_set_legacy_reset( dc,stm32_uart_reset);
   // dc->props = stm32_uart_properties;
   device_class_set_props(dc, stm32_uart_properties);
 }

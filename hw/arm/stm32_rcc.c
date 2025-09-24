@@ -966,7 +966,9 @@ static void stm32_rcc_class_init(ObjectClass *klass, void *data)
     DeviceClass *dc = DEVICE_CLASS(klass);
     //SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
 
-    dc->reset = stm32_rcc_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_rcc_reset;
+    device_class_set_legacy_reset( dc,stm32_rcc_reset);
     dc->realize = stm32_rcc_realize;
     device_class_set_props(dc, stm32_rcc_properties);
 }

@@ -33,7 +33,7 @@
 #include "hw/i2c/i2c.h"
 #include "hw/ssi/ssi.h"
 
-#include "../softmmu/simuliface.h"
+#include "../system/simuliface.h"
 
 //#define STM32_GPIOS_DIR "stm32_gpios_dir"
 //#define STM32_GPIOS_SYNC "stm32_gpios_sync"

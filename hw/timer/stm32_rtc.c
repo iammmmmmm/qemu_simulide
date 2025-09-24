@@ -379,7 +379,9 @@ static void stm32_rtc_class_init(ObjectClass *klass, void *data)
     //SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
 
     //k->init = stm32_rtc_init;
-    dc->reset = stm32_rtc_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_rtc_reset;
+    device_class_set_legacy_reset( dc,stm32_rtc_reset);
     dc->realize = stm32_rtc_realize;
     //dc->props = stm32_rtc_properties;
     device_class_set_props(dc, stm32_rtc_properties);

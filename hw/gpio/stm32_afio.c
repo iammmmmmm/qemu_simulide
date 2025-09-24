@@ -300,7 +300,9 @@ static void stm32_afio_class_init(ObjectClass *klass, void *data)
     //SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
 
     //k->init = stm32_afio_init;
-    dc->reset = stm32_afio_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_afio_reset;
+    device_class_set_legacy_reset( dc,stm32_afio_reset);
     //dc->props = stm32_afio_properties;
 }
 

@@ -379,7 +379,9 @@ static void
 stm32_i2c_class_init(ObjectClass *c, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(c);
-    dc->reset = stm32_i2c_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_i2c_reset;
+    device_class_set_legacy_reset( dc,stm32_i2c_reset);
     device_class_set_props(dc, stm32_i2c_properties);
 }
 

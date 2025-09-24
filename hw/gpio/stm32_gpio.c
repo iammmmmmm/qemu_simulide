@@ -24,7 +24,7 @@
 #include "hw/irq.h"
 #include "qemu/bitops.h"
 
-#include "../softmmu/simuliface.h"
+#include "../system/simuliface.h"
 
 
 /* DEFINITIONS*/
@@ -381,7 +381,9 @@ static void stm32_gpio_class_init(ObjectClass *klass, void *data)
     //SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
 
     //k->init = stm32_gpio_init;
-    dc->reset = stm32_gpio_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_gpio_reset;
+    device_class_set_legacy_reset( dc,stm32_gpio_reset);
     dc->realize = stm32_gpio_realize;
     //dc->props = stm32_gpio_properties;
     device_class_set_props(dc, stm32_gpio_properties);

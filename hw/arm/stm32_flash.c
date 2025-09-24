@@ -185,7 +185,9 @@ static void stm32_flash_class_init(ObjectClass *klass, void *data)
 
 	//k->init = stm32_flash_init;
 	//dc->props = stm32_flash_properties;
-    dc->reset = stm32_flash_reset;
+	//来自qemu_stm32的过时代码
+	//dc->reset = stm32_flash_reset;
+	device_class_set_legacy_reset( dc,stm32_flash_reset);
     dc->realize = stm32_flash_realize;
     device_class_set_props(dc, stm32_flash_properties);
 }
@@ -471,7 +473,9 @@ stm32_flash_regs_class_init(ObjectClass *klass, void *data)
 	DeviceClass *dc = DEVICE_CLASS(klass);
 	//SysBusDeviceClass *sc = SYS_BUS_DEVICE_CLASS(klass);
 	//sc->init = stm32_flash_regs_init;
-	dc->reset = stm32_flash_regs_reset;
+	//来自qemu_stm32的过时代码
+	//dc->reset = stm32_flash_regs_reset;
+	device_class_set_legacy_reset( dc,stm32_flash_regs_reset);
 }
 
 static const TypeInfo

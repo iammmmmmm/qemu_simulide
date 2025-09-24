@@ -313,7 +313,9 @@ static void stm32_exti_class_init(ObjectClass *klass, void *data)
     //SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
 
     //k->init = stm32_exti_init;
-    dc->reset = stm32_exti_reset;
+    //来自qemu_stm32的过时代码
+    //dc->reset = stm32_exti_reset;
+    device_class_set_legacy_reset( dc,stm32_exti_reset);
 }
 
 static TypeInfo stm32_exti_info = {
