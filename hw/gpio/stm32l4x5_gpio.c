@@ -27,6 +27,7 @@
 #include "qapi/error.h"
 #include "migration/vmstate.h"
 #include "trace.h"
+#include "../system/simuliface.h"
 
 #include "../system/simuliface.h"
 
@@ -46,36 +47,36 @@
 /* 0b11111111_11111111_00000000_00000000 */
 #define RESERVED_BITS_MASK 0xFFFF0000
 
-static void update_gpio_idr(Stm32l4x5GpioState *s);
+static void update_gpio_idr(Stm32l4x5GpioState* s);
 
-static bool is_pull_up(Stm32l4x5GpioState *s, unsigned pin)
+static bool is_pull_up(Stm32l4x5GpioState* s, unsigned pin)
 {
     return extract32(s->pupdr, 2 * pin, 2) == 1;
 }
 
-static bool is_pull_down(Stm32l4x5GpioState *s, unsigned pin)
+static bool is_pull_down(Stm32l4x5GpioState* s, unsigned pin)
 {
     return extract32(s->pupdr, 2 * pin, 2) == 2;
 }
 
-static bool is_output(Stm32l4x5GpioState *s, unsigned pin)
+static bool is_output(Stm32l4x5GpioState* s, unsigned pin)
 {
     return extract32(s->moder, 2 * pin, 2) == 1;
 }
 
-static bool is_open_drain(Stm32l4x5GpioState *s, unsigned pin)
+static bool is_open_drain(Stm32l4x5GpioState* s, unsigned pin)
 {
     return extract32(s->otyper, pin, 1) == 1;
 }
 
-static bool is_push_pull(Stm32l4x5GpioState *s, unsigned pin)
+static bool is_push_pull(Stm32l4x5GpioState* s, unsigned pin)
 {
     return extract32(s->otyper, pin, 1) == 0;
 }
 
-static void stm32l4x5_gpio_reset_hold(Object *obj, ResetType type)
+static void stm32l4x5_gpio_reset_hold(Object* obj, ResetType type)
 {
-    Stm32l4x5GpioState *s = STM32L4X5_GPIO(obj);
+    Stm32l4x5GpioState* s = STM32L4X5_GPIO(obj);
 
     s->moder = s->moder_reset;
     s->otyper = 0x00000000;
@@ -93,24 +94,28 @@ static void stm32l4x5_gpio_reset_hold(Object *obj, ResetType type)
     update_gpio_idr(s);
 }
 
-static void stm32l4x5_gpio_set(void *opaque, int line, int level)
+static void stm32l4x5_gpio_set(void* opaque, int line, int level)
 {
-    Stm32l4x5GpioState *s = opaque;
+    Stm32l4x5GpioState* s = opaque;
     /*
      * The pin isn't set if line is configured in output mode
      * except if level is 0 and the output is open-drain.
      * This way there will be no short-circuit prone situations.
      */
-    if (is_output(s, line) && !(is_open_drain(s, line) && (level == 0))) {
+    if (is_output(s, line) && !(is_open_drain(s, line) && (level == 0)))
+    {
         qemu_log_mask(LOG_GUEST_ERROR, "Line %d can't be driven externally\n",
                       line);
         return;
     }
 
     s->disconnected_pins &= ~(1 << line);
-    if (level) {
+    if (level)
+    {
         s->pins_connected_high |= (1 << line);
-    } else {
+    }
+    else
+    {
         s->pins_connected_high &= ~(1 << line);
     }
     trace_stm32l4x5_gpio_pins(s->name, s->disconnected_pins,
@@ -119,30 +124,41 @@ static void stm32l4x5_gpio_set(void *opaque, int line, int level)
 }
 
 
-static void update_gpio_idr(Stm32l4x5GpioState *s)
+static void update_gpio_idr(Stm32l4x5GpioState* s)
 {
     uint32_t new_idr_mask = 0;
     uint32_t new_idr = s->odr;
     uint32_t old_idr = s->idr;
     int new_pin_state, old_pin_state;
 
-    for (int i = 0; i < GPIO_NUM_PINS; i++) {
-        if (is_output(s, i)) {
-            if (is_push_pull(s, i)) {
+    for (int i = 0; i < GPIO_NUM_PINS; i++)
+    {
+        if (is_output(s, i))
+        {
+            if (is_push_pull(s, i))
+            {
                 new_idr_mask |= (1 << i);
-            } else if (!(s->odr & (1 << i))) {
+            }
+            else if (!(s->odr & (1 << i)))
+            {
                 /* open-drain ODR 0 */
                 new_idr_mask |= (1 << i);
-            /* open-drain ODR 1 */
-            } else if (!(s->disconnected_pins & (1 << i)) &&
-                       !(s->pins_connected_high & (1 << i))) {
+                /* open-drain ODR 1 */
+            }
+            else if (!(s->disconnected_pins & (1 << i)) &&
+                !(s->pins_connected_high & (1 << i)))
+            {
                 /* open-drain ODR 1 with pin connected low */
                 new_idr_mask |= (1 << i);
                 new_idr &= ~(1 << i);
-            /* open-drain ODR 1 with unactive pin */
-            } else if (is_pull_up(s, i)) {
+                /* open-drain ODR 1 with unactive pin */
+            }
+            else if (is_pull_up(s, i))
+            {
                 new_idr_mask |= (1 << i);
-            } else if (is_pull_down(s, i)) {
+            }
+            else if (is_pull_down(s, i))
+            {
                 new_idr_mask |= (1 << i);
                 new_idr &= ~(1 << i);
             }
@@ -151,24 +167,34 @@ static void update_gpio_idr(Stm32l4x5GpioState *s)
              * with unactive pin without pull-up or pull-down :
              * the value is floating.
              */
-        /* input or analog mode with connected pin */
-        } else if (!(s->disconnected_pins & (1 << i))) {
-            if (s->pins_connected_high & (1 << i)) {
+            /* input or analog mode with connected pin */
+        }
+        else if (!(s->disconnected_pins & (1 << i)))
+        {
+            if (s->pins_connected_high & (1 << i))
+            {
                 /* pin high */
                 new_idr_mask |= (1 << i);
                 new_idr |= (1 << i);
-            } else {
+            }
+            else
+            {
                 /* pin low */
                 new_idr_mask |= (1 << i);
                 new_idr &= ~(1 << i);
             }
-        /* input or analog mode with disconnected pin */
-        } else {
-            if (is_pull_up(s, i)) {
+            /* input or analog mode with disconnected pin */
+        }
+        else
+        {
+            if (is_pull_up(s, i))
+            {
                 /* pull-up */
                 new_idr_mask |= (1 << i);
                 new_idr |= (1 << i);
-            } else if (is_pull_down(s, i)) {
+            }
+            else if (is_pull_down(s, i))
+            {
                 /* pull-down */
                 new_idr_mask |= (1 << i);
                 new_idr &= ~(1 << i);
@@ -184,13 +210,18 @@ static void update_gpio_idr(Stm32l4x5GpioState *s)
     s->idr = (old_idr & ~new_idr_mask) | (new_idr & new_idr_mask);
     trace_stm32l4x5_gpio_update_idr(s->name, old_idr, s->idr);
 
-    for (int i = 0; i < GPIO_NUM_PINS; i++) {
-        if (new_idr_mask & (1 << i)) {
+    for (int i = 0; i < GPIO_NUM_PINS; i++)
+    {
+        if (new_idr_mask & (1 << i))
+        {
             new_pin_state = (new_idr & (1 << i)) > 0;
             old_pin_state = (old_idr & (1 << i)) > 0;
-            if (new_pin_state > old_pin_state) {
+            if (new_pin_state > old_pin_state)
+            {
                 qemu_irq_raise(s->pin[i]);
-            } else if (new_pin_state < old_pin_state) {
+            }
+            else if (new_pin_state < old_pin_state)
+            {
                 qemu_irq_lower(s->pin[i]);
             }
         }
@@ -202,14 +233,17 @@ static void update_gpio_idr(Stm32l4x5GpioState *s)
  * mode and externally driven (except pins in open-drain
  * mode externally set to 0).
  */
-static uint32_t get_gpio_pinmask_to_disconnect(Stm32l4x5GpioState *s)
+static uint32_t get_gpio_pinmask_to_disconnect(Stm32l4x5GpioState* s)
 {
     uint32_t pins_to_disconnect = 0;
-    for (int i = 0; i < GPIO_NUM_PINS; i++) {
+    for (int i = 0; i < GPIO_NUM_PINS; i++)
+    {
         /* for each connected pin in output mode */
-        if (!(s->disconnected_pins & (1 << i)) && is_output(s, i)) {
+        if (!(s->disconnected_pins & (1 << i)) && is_output(s, i))
+        {
             /* if either push-pull or high level */
-            if (is_push_pull(s, i) || s->pins_connected_high & (1 << i)) {
+            if (is_push_pull(s, i) || s->pins_connected_high & (1 << i))
+            {
                 pins_to_disconnect |= (1 << i);
                 qemu_log_mask(LOG_GUEST_ERROR,
                               "Line %d can't be driven externally\n",
@@ -223,7 +257,7 @@ static uint32_t get_gpio_pinmask_to_disconnect(Stm32l4x5GpioState *s)
 /*
  * Set field `disconnected_pins` and call `update_gpio_idr()`
  */
-static void disconnect_gpio_pins(Stm32l4x5GpioState *s, uint16_t lines)
+static void disconnect_gpio_pins(Stm32l4x5GpioState* s, uint16_t lines)
 {
     s->disconnected_pins |= lines;
     trace_stm32l4x5_gpio_pins(s->name, s->disconnected_pins,
@@ -231,40 +265,46 @@ static void disconnect_gpio_pins(Stm32l4x5GpioState *s, uint16_t lines)
     update_gpio_idr(s);
 }
 
-static void disconnected_pins_set(Object *obj, Visitor *v,
-    const char *name, void *opaque, Error **errp)
+static void disconnected_pins_set(Object* obj, Visitor* v,
+                                  const char* name, void* opaque, Error** errp)
 {
-    Stm32l4x5GpioState *s = STM32L4X5_GPIO(obj);
+    Stm32l4x5GpioState* s = STM32L4X5_GPIO(obj);
     uint16_t value;
-    if (!visit_type_uint16(v, name, &value, errp)) {
+    if (!visit_type_uint16(v, name, &value, errp))
+    {
         return;
     }
     disconnect_gpio_pins(s, value);
 }
 
-static void disconnected_pins_get(Object *obj, Visitor *v,
-    const char *name, void *opaque, Error **errp)
+static void disconnected_pins_get(Object* obj, Visitor* v,
+                                  const char* name, void* opaque, Error** errp)
 {
-    visit_type_uint16(v, name, (uint16_t *)opaque, errp);
+    visit_type_uint16(v, name, (uint16_t*)opaque, errp);
 }
 
-static void clock_freq_get(Object *obj, Visitor *v,
-    const char *name, void *opaque, Error **errp)
+static void clock_freq_get(Object* obj, Visitor* v,
+                           const char* name, void* opaque, Error** errp)
 {
-    Stm32l4x5GpioState *s = STM32L4X5_GPIO(obj);
+    Stm32l4x5GpioState* s = STM32L4X5_GPIO(obj);
     uint32_t clock_freq_hz = clock_get_hz(s->clk);
     visit_type_uint32(v, name, &clock_freq_hz, errp);
 }
 
-static void stm32l4x5_gpio_write(void *opaque, hwaddr addr,
+static void stm32l4x5_gpio_write(void* opaque, hwaddr addr,
                                  uint64_t val64, unsigned int size)
 {
-    Stm32l4x5GpioState *s = opaque;
-printf("STM32 GPIO Write %lu %lu\n", addr, val64 ); fflush( stdout );
+    Stm32l4x5GpioState* s = opaque;
+    printf("STM32 GPIO Write %lu %lu\n", addr, val64);
+    fflush(stdout);
     uint32_t value = val64;
     trace_stm32l4x5_gpio_write(s->name, addr, val64);
 
-    switch (addr) {
+    // uint64_t qemu_Time=getQemu_ps();
+    // if (!waitEvent())return;
+
+    switch (addr)
+    {
     case GPIO_MODER:
         s->moder = value;
         disconnect_gpio_pins(s, get_gpio_pinmask_to_disconnect(s));
@@ -299,9 +339,10 @@ printf("STM32 GPIO Write %lu %lu\n", addr, val64 ); fflush( stdout );
         /// test code ------------------------------
         uint32_t state = s->odr;
         uint64_t qemuTime = getQemu_ps();
-        if( !waitEvent() ) return;
+        if (!waitEvent()) return;
 
-        printf("STM32 gpio ODR Changed %i %lu\n", state, qemuTime ); fflush( stdout );
+        printf("STM32 gpio ODR Changed %i %lu\n", state, qemuTime);
+        fflush(stdout);
 
         m_arena->action = GPIO_OUT;
         m_arena->data32 = state;
@@ -310,15 +351,16 @@ printf("STM32 GPIO Write %lu %lu\n", addr, val64 ); fflush( stdout );
 
         update_gpio_idr(s);
         return;
-    case GPIO_BSRR: {
-        uint32_t bits_to_reset = (value & RESERVED_BITS_MASK) >> GPIO_NUM_PINS;
-        uint32_t bits_to_set = value & ~RESERVED_BITS_MASK;
-        /* If both BSx and BRx are set, BSx has priority.*/
-        s->odr &= ~bits_to_reset;
-        s->odr |= bits_to_set;
-        update_gpio_idr(s);
-        return;
-    }
+    case GPIO_BSRR:
+        {
+            uint32_t bits_to_reset = (value & RESERVED_BITS_MASK) >> GPIO_NUM_PINS;
+            uint32_t bits_to_set = value & ~RESERVED_BITS_MASK;
+            /* If both BSx and BRx are set, BSx has priority.*/
+            s->odr &= ~bits_to_reset;
+            s->odr |= bits_to_set;
+            update_gpio_idr(s);
+            return;
+        }
     case GPIO_LCKR:
         qemu_log_mask(LOG_UNIMP,
                       "%s: Locking port bits configuration isn't supported\n",
@@ -337,12 +379,13 @@ printf("STM32 GPIO Write %lu %lu\n", addr, val64 ); fflush( stdout );
                       __func__);
         s->afrh = value;
         return;
-    case GPIO_BRR: {
-        uint32_t bits_to_reset = value & ~RESERVED_BITS_MASK;
-        s->odr &= ~bits_to_reset;
-        update_gpio_idr(s);
-        return;
-    }
+    case GPIO_BRR:
+        {
+            uint32_t bits_to_reset = value & ~RESERVED_BITS_MASK;
+            s->odr &= ~bits_to_reset;
+            update_gpio_idr(s);
+            return;
+        }
     case GPIO_ASCR:
         qemu_log_mask(LOG_UNIMP,
                       "%s: ADC function isn't supported\n",
@@ -355,14 +398,16 @@ printf("STM32 GPIO Write %lu %lu\n", addr, val64 ); fflush( stdout );
     }
 }
 
-static uint64_t stm32l4x5_gpio_read(void *opaque, hwaddr addr,
+static uint64_t stm32l4x5_gpio_read(void* opaque, hwaddr addr,
                                     unsigned int size)
 {
-    Stm32l4x5GpioState *s = opaque;
-printf("STM32 GPIO Read %lu\n", addr ); fflush( stdout );
+    Stm32l4x5GpioState* s = opaque;
+    printf("STM32 GPIO Read %lu\n", addr);
+    fflush(stdout);
     trace_stm32l4x5_gpio_read(s->name, addr);
 
-    switch (addr) {
+    switch (addr)
+    {
     case GPIO_MODER:
         return s->moder;
     case GPIO_OTYPER:
@@ -410,9 +455,9 @@ static const MemoryRegionOps stm32l4x5_gpio_ops = {
     },
 };
 
-static void stm32l4x5_gpio_init(Object *obj)
+static void stm32l4x5_gpio_init(Object* obj)
 {
-    Stm32l4x5GpioState *s = STM32L4X5_GPIO(obj);
+    Stm32l4x5GpioState* s = STM32L4X5_GPIO(obj);
 
     memory_region_init_io(&s->mmio, obj, &stm32l4x5_gpio_ops, s,
                           TYPE_STM32L4X5_GPIO, 0x400);
@@ -431,10 +476,11 @@ static void stm32l4x5_gpio_init(Object *obj)
                         clock_freq_get, NULL, NULL, NULL);
 }
 
-static void stm32l4x5_gpio_realize(DeviceState *dev, Error **errp)
+static void stm32l4x5_gpio_realize(DeviceState* dev, Error** errp)
 {
-    Stm32l4x5GpioState *s = STM32L4X5_GPIO(dev);
-    if (!clock_has_source(s->clk)) {
+    Stm32l4x5GpioState* s = STM32L4X5_GPIO(dev);
+    if (!clock_has_source(s->clk))
+    {
         error_setg(errp, "GPIO: clk input must be connected");
         return;
     }
@@ -470,10 +516,10 @@ static Property stm32l4x5_gpio_properties[] = {
     DEFINE_PROP_END_OF_LIST(),
 };
 
-static void stm32l4x5_gpio_class_init(ObjectClass *klass, void *data)
+static void stm32l4x5_gpio_class_init(ObjectClass* klass, void* data)
 {
-    DeviceClass *dc = DEVICE_CLASS(klass);
-    ResettableClass *rc = RESETTABLE_CLASS(klass);
+    DeviceClass* dc = DEVICE_CLASS(klass);
+    ResettableClass* rc = RESETTABLE_CLASS(klass);
 
     device_class_set_props(dc, stm32l4x5_gpio_properties);
     dc->vmsd = &vmstate_stm32l4x5_gpio;

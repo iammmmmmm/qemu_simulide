@@ -36,26 +36,30 @@
 
 /* stm32f100_soc implementation is derived from stm32f205_soc */
 
-static const uint32_t usart_addr[STM_NUM_USARTS] = { 0x40013800, 0x40004400,
-    0x40004800 };
-static const uint32_t spi_addr[STM_NUM_SPIS] = { 0x40013000, 0x40003800 };
+static const uint32_t usart_addr[STM_NUM_USARTS] = {
+    0x40013800, 0x40004400,
+    0x40004800
+};
+static const uint32_t spi_addr[STM_NUM_SPIS] = {0x40013000, 0x40003800};
 
 static const int usart_irq[STM_NUM_USARTS] = {37, 38, 39};
 static const int spi_irq[STM_NUM_SPIS] = {35, 36};
 
-static void stm32f100_soc_initfn(Object *obj)
+static void stm32f100_soc_initfn(Object* obj)
 {
-    STM32F100State *s = STM32F100_SOC(obj);
+    STM32F100State* s = STM32F100_SOC(obj);
     int i;
 
     object_initialize_child(obj, "armv7m", &s->armv7m, TYPE_ARMV7M);
 
-    for (i = 0; i < STM_NUM_USARTS; i++) {
+    for (i = 0; i < STM_NUM_USARTS; i++)
+    {
         object_initialize_child(obj, "usart[*]", &s->usart[i],
                                 TYPE_STM32F2XX_USART);
     }
 
-    for (i = 0; i < STM_NUM_SPIS; i++) {
+    for (i = 0; i < STM_NUM_SPIS; i++)
+    {
         object_initialize_child(obj, "spi[*]", &s->spi[i], TYPE_STM32F2XX_SPI);
     }
 
@@ -63,26 +67,28 @@ static void stm32f100_soc_initfn(Object *obj)
     s->refclk = qdev_init_clock_in(DEVICE(s), "refclk", NULL, NULL, 0);
 }
 
-static void stm32f100_soc_realize(DeviceState *dev_soc, Error **errp)
+static void stm32f100_soc_realize(DeviceState* dev_soc, Error** errp)
 {
-    STM32F100State *s = STM32F100_SOC(dev_soc);
+    STM32F100State* s = STM32F100_SOC(dev_soc);
     DeviceState *dev, *armv7m;
-    SysBusDevice *busdev;
+    SysBusDevice* busdev;
     int i;
 
-    MemoryRegion *system_memory = get_system_memory();
+    MemoryRegion* system_memory = get_system_memory();
 
     /*
      * We use s->refclk internally and only define it with qdev_init_clock_in()
      * so it is correctly parented and not leaked on an init/deinit; it is not
      * intended as an externally exposed clock.
      */
-    if (clock_has_source(s->refclk)) {
+    if (clock_has_source(s->refclk))
+    {
         error_setg(errp, "refclk clock must not be wired up by the board code");
         return;
     }
 
-    if (!clock_has_source(s->sysclk)) {
+    if (!clock_has_source(s->sysclk))
+    {
         error_setg(errp, "sysclk clock must be wired up by the board code");
         return;
     }
@@ -122,15 +128,18 @@ static void stm32f100_soc_realize(DeviceState *dev_soc, Error **errp)
     qdev_connect_clock_in(armv7m, "refclk", s->refclk);
     object_property_set_link(OBJECT(&s->armv7m), "memory",
                              OBJECT(get_system_memory()), &error_abort);
-    if (!sysbus_realize(SYS_BUS_DEVICE(&s->armv7m), errp)) {
+    if (!sysbus_realize(SYS_BUS_DEVICE(&s->armv7m), errp))
+    {
         return;
     }
 
     /* Attach UART (uses USART registers) and USART controllers */
-    for (i = 0; i < STM_NUM_USARTS; i++) {
+    for (i = 0; i < STM_NUM_USARTS; i++)
+    {
         dev = DEVICE(&(s->usart[i]));
         qdev_prop_set_chr(dev, "chardev", serial_hd(i));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->usart[i]), errp)) {
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->usart[i]), errp))
+        {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
@@ -139,9 +148,11 @@ static void stm32f100_soc_realize(DeviceState *dev_soc, Error **errp)
     }
 
     /* SPI 1 and 2 */
-    for (i = 0; i < STM_NUM_SPIS; i++) {
+    for (i = 0; i < STM_NUM_SPIS; i++)
+    {
         dev = DEVICE(&(s->spi[i]));
-        if (!sysbus_realize(SYS_BUS_DEVICE(&s->spi[i]), errp)) {
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->spi[i]), errp))
+        {
             return;
         }
         busdev = SYS_BUS_DEVICE(dev);
@@ -149,52 +160,61 @@ static void stm32f100_soc_realize(DeviceState *dev_soc, Error **errp)
         sysbus_connect_irq(busdev, 0, qdev_get_gpio_in(armv7m, spi_irq[i]));
     }
 
-    create_unimplemented_device("timer[2]",  0x40000000, 0x400);
-    create_unimplemented_device("timer[3]",  0x40000400, 0x400);
-    create_unimplemented_device("timer[4]",  0x40000800, 0x400);
-    create_unimplemented_device("timer[6]",  0x40001000, 0x400);
-    create_unimplemented_device("timer[7]",  0x40001400, 0x400);
-    create_unimplemented_device("RTC",       0x40002800, 0x400);
-    create_unimplemented_device("WWDG",      0x40002C00, 0x400);
-    create_unimplemented_device("IWDG",      0x40003000, 0x400);
-    create_unimplemented_device("I2C1",      0x40005400, 0x400);
-    create_unimplemented_device("I2C2",      0x40005800, 0x400);
-    create_unimplemented_device("BKP",       0x40006C00, 0x400);
-    create_unimplemented_device("PWR",       0x40007000, 0x400);
-    create_unimplemented_device("DAC",       0x40007400, 0x400);
-    create_unimplemented_device("CEC",       0x40007800, 0x400);
-    create_unimplemented_device("AFIO",      0x40010000, 0x400);
-    create_unimplemented_device("EXTI",      0x40010400, 0x400);
-    create_unimplemented_device("GPIOA",     0x40010800, 0x400);
-    create_unimplemented_device("GPIOB",     0x40010C00, 0x400);
-    create_unimplemented_device("GPIOC",     0x40011000, 0x400);
-    create_unimplemented_device("GPIOD",     0x40011400, 0x400);
-    create_unimplemented_device("GPIOE",     0x40011800, 0x400);
-    create_unimplemented_device("ADC1",      0x40012400, 0x400);
-    create_unimplemented_device("timer[1]",  0x40012C00, 0x400);
+    create_unimplemented_device("timer[2]", 0x40000000, 0x400);
+    create_unimplemented_device("timer[3]", 0x40000400, 0x400);
+    create_unimplemented_device("timer[4]", 0x40000800, 0x400);
+    create_unimplemented_device("timer[6]", 0x40001000, 0x400);
+    create_unimplemented_device("timer[7]", 0x40001400, 0x400);
+    create_unimplemented_device("RTC", 0x40002800, 0x400);
+    create_unimplemented_device("WWDG", 0x40002C00, 0x400);
+    create_unimplemented_device("IWDG", 0x40003000, 0x400);
+    create_unimplemented_device("I2C1", 0x40005400, 0x400);
+    create_unimplemented_device("I2C2", 0x40005800, 0x400);
+    create_unimplemented_device("BKP", 0x40006C00, 0x400);
+    create_unimplemented_device("PWR", 0x40007000, 0x400);
+    create_unimplemented_device("DAC", 0x40007400, 0x400);
+    create_unimplemented_device("CEC", 0x40007800, 0x400);
+    create_unimplemented_device("AFIO", 0x40010000, 0x400);
+    create_unimplemented_device("EXTI", 0x40010400, 0x400);
+    create_unimplemented_device("GPIOA", 0x40010800, 0x400);
+    create_unimplemented_device("GPIOB", 0x40010C00, 0x400);
+    create_unimplemented_device("GPIOC", 0x40011000, 0x400);
+    create_unimplemented_device("GPIOD", 0x40011400, 0x400);
+    create_unimplemented_device("GPIOE", 0x40011800, 0x400);
+    create_unimplemented_device("ADC1", 0x40012400, 0x400);
+    create_unimplemented_device("timer[1]", 0x40012C00, 0x400);
     create_unimplemented_device("timer[15]", 0x40014000, 0x400);
     create_unimplemented_device("timer[16]", 0x40014400, 0x400);
     create_unimplemented_device("timer[17]", 0x40014800, 0x400);
-    create_unimplemented_device("DMA",       0x40020000, 0x400);
-    create_unimplemented_device("RCC",       0x40021000, 0x400);
+    create_unimplemented_device("DMA", 0x40020000, 0x400);
+    create_unimplemented_device("RCC", 0x40021000, 0x400);
     create_unimplemented_device("Flash Int", 0x40022000, 0x400);
-    create_unimplemented_device("CRC",       0x40023000, 0x400);
+    create_unimplemented_device("CRC", 0x40023000, 0x400);
 }
 
-static void stm32f100_soc_class_init(ObjectClass *klass, void *data)
+// 来自qemu_Stm32的过时代码，在最新qemu主线已删除
+// static Property stm32f100_soc_properties[] = {
+//     DEFINE_PROP_STRING("cpu-type", STM32F100State,
+//         cpu_type),
+//     DEFINE_PROP_END_OF_LIST(),
+// };
+
+static void stm32f100_soc_class_init(ObjectClass* klass, void* data)
 {
-    DeviceClass *dc = DEVICE_CLASS(klass);
+    DeviceClass* dc = DEVICE_CLASS(klass);
 
     dc->realize = stm32f100_soc_realize;
+    // 来自qemu_Stm32的过时代码，在最新qemu主线已删除
+    //   device_class_set_props(dc, stm32f100_soc_properties);
     /* No vmstate or reset required: device has no internal state */
 }
 
 static const TypeInfo stm32f100_soc_info = {
-    .name          = TYPE_STM32F100_SOC,
-    .parent        = TYPE_SYS_BUS_DEVICE,
+    .name = TYPE_STM32F100_SOC,
+    .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(STM32F100State),
     .instance_init = stm32f100_soc_initfn,
-    .class_init    = stm32f100_soc_class_init,
+    .class_init = stm32f100_soc_class_init,
 };
 
 static void stm32f100_soc_types(void)
