@@ -153,6 +153,8 @@ void qemu_notify_event(void)
 
 static GArray *gpollfds;
 
+GMainContext *g_main_context_default_l = NULL;
+
 int qemu_init_main_loop(Error **errp)
 {
     int ret;
@@ -169,6 +171,11 @@ int qemu_init_main_loop(Error **errp)
     if (!qemu_aio_context) {
         return -EMFILE;
     }
+
+    if(g_main_context_default_l == NULL){
+        g_main_context_default_l = g_main_context_new();
+    }
+
     qemu_set_current_aio_context(qemu_aio_context);
     qemu_notify_bh = qemu_bh_new(notify_event_cb, NULL);
     gpollfds = g_array_new(FALSE, FALSE, sizeof(GPollFD));

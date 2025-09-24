@@ -18,9 +18,6 @@ arm_ss.add(when: 'CONFIG_STELLARIS', if_true: files('stellaris.c'))
 arm_ss.add(when: 'CONFIG_STM32VLDISCOVERY', if_true: files('stm32vldiscovery.c'))
 arm_ss.add(when: 'CONFIG_STM32_P103', if_true: files('stm32_adc.c', 'stm32_crc.c', 'stm32f100_soc.c', 'stm32f205_soc.c', 'stm32_iwdg.c', 'stm32.c', 'stm32_dac.c', 'stm32_f103c8.c', 'stm32_rcc.c', 'stm32_clktree.c', 'stm32_dma.c', 'stm32_flash.c', 'stm32_i2c.c', 'stm32_p103.c','stm32_f103c8_simul.c'))
 
-arm_ss.add(when: 'CONFIG_COLLIE', if_true: files('collie.c'))
-arm_ss.add(when: 'CONFIG_VERSATILE', if_true: files('versatilepb.c'))
-arm_ss.add(when: 'CONFIG_VEXPRESS', if_true: files('vexpress.c'))
 arm_ss.add(when: 'CONFIG_ZYNQ', if_true: files('xilinx_zynq.c'))
 arm_ss.add(when: 'CONFIG_SABRELITE', if_true: files('sabrelite.c'))
 
