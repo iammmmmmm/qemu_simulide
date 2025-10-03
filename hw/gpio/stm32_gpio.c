@@ -111,7 +111,8 @@ static void stm32_gpio_update_dir(Stm32Gpio *s, int cr_index) // Update the CRL 
 {
     unsigned start_pin, pin, pin_dir;
     uint16_t old_mask, diff;
-
+    uint8_t  portNumber = s->periph; // PortA = 1
+    uint32_t gpio_configs=0x0;
     assert( (cr_index == 0) || (cr_index == 1) );
     old_mask = s->dir_mask;
 
@@ -124,14 +125,14 @@ static void stm32_gpio_update_dir(Stm32Gpio *s, int cr_index) // Update the CRL 
         // If the mode is 0, the pin is input.  Otherwise, it is output.
         s->dir_mask &= ~(1 << pin);
         s->dir_mask |= (pin_dir ? 1 : 0) << pin;
-        if( pin_dir )//output
-        {
             uint8_t config_bits = stm32_gpio_get_config_bits( s, pin );
-
+        if (pin_dir)
+        {
             if( config_bits & 0x2 ) { //alternate function
                qemu_set_irq( s->sync_irq[0], (0x800000| pin << 4 | config_bits << 2) );
             }
         }
+        gpio_configs= gpio_configs<<4 | ((config_bits << 2) | pin_dir);
     }
 
     diff = old_mask ^ s->dir_mask;
@@ -143,8 +144,6 @@ static void stm32_gpio_update_dir(Stm32Gpio *s, int cr_index) // Update the CRL 
     }
 
     /// We have pin directions in s->dir_mask, 1 bit per pin: 1 = output
-
-    uint8_t  portNumber = s->periph; // PortA = 1
     uint32_t new_value = s->GPIOx_CRy[cr_index];
     if( cr_index ) printf("STM32 GPIO CRH Write %i %i\n", portNumber, new_value );
     else           printf("STM32 GPIO CRL Write %i %i\n", portNumber, new_value );
@@ -156,15 +155,12 @@ static void stm32_gpio_update_dir(Stm32Gpio *s, int cr_index) // Update the CRL 
     m_arena->action = GPIO_DIR;
     m_arena->data16 = s->dir_mask;    // 1 bit per pin: 1 = output
     m_arena->data8  = portNumber;     // We have to send Port number, PortA = 1
+    m_arena->data32 = gpio_configs;   // details of gpio mode
+    m_arena->mask16 = cr_index;      //decide gpio_configs the pins are recorded 0-7 or 8-15
+    m_arena->mask32 = s->GPIOx_ODR;
     m_arena->time   = qemuTime;
 
-    /// TODO:
-    /// We still need to get more about pin configuration:
-    /// - Open collector
-    /// - Maybe other??
-    ///
-    /// Or we could just send CRL|CRH values to SimulIDE
-    /// and let it get configuration parameters
+
 }
 
 /* Write the Output Data Register.
